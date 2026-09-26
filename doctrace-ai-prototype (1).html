@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DocTrace AI — traceable document analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ECEEF2;--surface:#F7F8FA;--paper:#FFFFFF;--ink:#161A24;--muted:#5B6272;--faint:#8A90A0;--rule:#D9DDE5;
+  --brand:#5A4FE0;--brand-ink:#FFFFFF;--hl:#FFE15A;--hl-ink:#161A24;
+  --c-deadline:#5A4FE0;--c-obligation:#0C8580;--c-anomaly:#D2344E;--c-missing:#B86E00;--c-financial:#1D8249;
+  --shadow:0 1px 2px rgba(22,26,36,.06),0 10px 30px rgba(22,26,36,.07);
+  --ui:"Instrument Sans",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --doc:"Source Serif 4",Georgia,"Times New Roman",serif;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F1219;--surface:#161A23;--paper:#1C212C;--ink:#E8EAF0;--muted:#A3A9B8;--faint:#6F7687;--rule:#2A3040;
+  --brand:#8D84FF;--brand-ink:#0F1219;--hl:#E6C84A;--hl-ink:#12151C;
+  --c-deadline:#8D84FF;--c-obligation:#34C0B8;--c-anomaly:#FF6B80;--c-missing:#F0A742;--c-financial:#4CC47E;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+}}
+:root[data-theme="dark"]{
+  --bg:#0F1219;--surface:#161A23;--paper:#1C212C;--ink:#E8EAF0;--muted:#A3A9B8;--faint:#6F7687;--rule:#2A3040;
+  --brand:#8D84FF;--brand-ink:#0F1219;--hl:#E6C84A;--hl-ink:#12151C;
+  --c-deadline:#8D84FF;--c-obligation:#34C0B8;--c-anomaly:#FF6B80;--c-missing:#F0A742;--c-financial:#4CC47E;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--ui);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.cat-deadline{--c:var(--c-deadline)}.cat-obligation{--c:var(--c-obligation)}.cat-anomaly{--c:var(--c-anomaly)}.cat-missing{--c:var(--c-missing)}.cat-financial{--c:var(--c-financial)}
+
+/* header */
+header{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--rule);background:var(--surface);flex-shrink:0}
+.mark{font-weight:700;font-size:19px;letter-spacing:-.02em;white-space:nowrap;position:relative;padding:0 3px}
+.mark::before{content:"";position:absolute;left:0;right:0;bottom:3px;height:9px;background:var(--hl);opacity:.85;border-radius:2px;z-index:0;transform:skewX(-8deg)}
+.mark span{position:relative}
+.tabs{display:flex;gap:4px;overflow-x:auto;flex:1;min-width:0;scrollbar-width:none}
+.tab{border:1px solid transparent;background:none;padding:6px 12px;border-radius:8px;cursor:pointer;white-space:nowrap;color:var(--muted);font-size:14px;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+.tab:hover{background:var(--bg)}
+.tab[aria-selected="true"]{background:var(--paper);border-color:var(--rule);color:var(--ink);font-weight:600}
+.btn{border:1px solid var(--rule);background:var(--paper);padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;white-space:nowrap;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{border-color:var(--faint)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn[disabled]{opacity:.55;cursor:default}
+.btn svg{width:16px;height:16px}
+main{flex:1;min-height:0;display:flex;flex-direction:column}
+
+/* empty state */
+.welcome{flex:1;overflow:auto;padding:48px 24px}
+.welcome-inner{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:1.1fr 1fr;gap:56px;align-items:start}
+.welcome h1{font-size:clamp(30px,4.2vw,46px);line-height:1.08;letter-spacing:-.03em;margin:0 0 18px;font-weight:650;max-width:15ch}
+.welcome p.lede{color:var(--muted);font-size:17px;max-width:46ch;margin:0 0 28px}
+.drop{border:1.5px dashed var(--faint);border-radius:14px;padding:28px;background:var(--surface);text-align:left;display:flex;gap:18px;align-items:center;cursor:pointer;transition:border-color .15s,background .15s}
+.drop.over{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 7%,var(--surface))}
+.drop-icon{width:48px;height:48px;border-radius:12px;background:var(--paper);border:1px solid var(--rule);display:grid;place-items:center;flex-shrink:0}
+.drop strong{display:block;font-size:16px}
+.drop small{color:var(--muted);font-size:13.5px}
+.samples h2{font-size:15px;font-weight:600;margin:4px 0 14px;color:var(--muted)}
+.sample-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sample{border:1px solid var(--rule);background:var(--paper);border-radius:6px;padding:0;cursor:pointer;text-align:left;box-shadow:var(--shadow);overflow:hidden;transition:transform .15s}
+.sample:hover{transform:translateY(-2px)}
+.sample .thumb{height:92px;padding:14px 16px;border-bottom:1px solid var(--rule);display:flex;flex-direction:column;gap:6px}
+.sample .thumb i{display:block;height:5px;border-radius:2px;background:var(--rule)}
+.sample .thumb i.h{background:color-mix(in srgb,var(--c) 45%,transparent)}
+.sample .meta{padding:12px 16px 14px;min-height:78px}
+.sample b{display:block;font-size:14.5px}
+.sample span{font-size:13px;color:var(--muted)}
+.note{font-size:13px;color:var(--faint);margin-top:14px}
+
+/* workspace */
+.toolbar{display:flex;align-items:center;gap:14px;padding:14px 20px 10px;flex-wrap:wrap}
+.docname{font-size:18px;font-weight:650;letter-spacing:-.01em;margin:0}
+.badge{font-size:12.5px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--paper);border:1px solid var(--rule);color:var(--muted)}
+.toolbar .spacer{flex:1}
+.filters{display:flex;gap:8px;padding:0 20px 12px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--rule);background:var(--paper);border-radius:999px;padding:5px 12px 5px 10px;font-size:13.5px;cursor:pointer}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--c,var(--ink))}
+.pill .n{font-weight:700;font-variant-numeric:tabular-nums}
+.pill[aria-pressed="true"]{border-color:var(--c,var(--ink));box-shadow:inset 0 0 0 1px var(--c,var(--ink))}
+.work{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:0;border-top:1px solid var(--rule)}
+.viewer{overflow:auto;padding:24px;background:var(--bg)}
+.panel{overflow:auto;background:var(--surface);border-left:1px solid var(--rule);display:flex;flex-direction:column}
+
+/* paper */
+.pagelabel{font-size:12.5px;color:var(--faint);margin:0 auto 8px;max-width:760px}
+.paper{background:var(--paper);max-width:760px;margin:0 auto 28px;border-radius:3px;box-shadow:var(--shadow);padding:34px 28px 38px 0;font-family:var(--doc);font-size:15px;line-height:1.72}
+.ln{display:grid;grid-template-columns:44px 18px 1fr;align-items:start;border-radius:3px;scroll-margin:120px}
+.ln .no{color:var(--faint);font:12px/2.1 var(--ui);text-align:right;padding-right:6px;font-variant-numeric:tabular-nums;user-select:none}
+.ln .gut{display:flex;flex-direction:column;gap:2px;padding-top:9px;align-items:center}
+.ln .gut i{width:6px;height:6px;border-radius:50%;background:var(--c)}
+.ln .tx{white-space:pre-wrap;word-break:break-word;min-height:1.72em}
+.ln.flash{animation:lineflash 1.4s ease-out}
+@keyframes lineflash{0%{background:color-mix(in srgb,var(--hl) 70%,transparent)}100%{background:transparent}}
+mark.m{background:color-mix(in srgb,var(--c) 15%,transparent);color:inherit;border-bottom:2px solid var(--c);border-radius:2px;padding:1px 0;cursor:pointer}
+mark.m:hover{background:color-mix(in srgb,var(--c) 26%,transparent)}
+mark.m.sel{background:var(--hl);color:var(--hl-ink);border-bottom-color:var(--c);box-shadow:0 0 0 2px var(--hl)}
+mark.m.flash{animation:markflash 1.2s ease-out}
+@keyframes markflash{0%{box-shadow:0 0 0 7px color-mix(in srgb,var(--hl) 60%,transparent)}100%{box-shadow:0 0 0 2px var(--hl)}}
+
+/* panel */
+.ptabs{display:flex;gap:2px;padding:10px 14px 0;border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--surface);z-index:2}
+.ptab{border:none;background:none;padding:9px 12px 10px;cursor:pointer;color:var(--muted);font-weight:600;font-size:14px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.ptab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.plist{padding:14px;display:flex;flex-direction:column;gap:10px}
+.aibar{margin:14px 14px 0;padding:12px 14px;border-radius:10px;background:var(--paper);border:1px solid var(--rule);font-size:14px}
+.aibar .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.aibar b{font-weight:650}
+.aibar .ok{color:var(--c-financial);font-weight:650}
+.aibar .bad{color:var(--c-anomaly);font-weight:650}
+.aibar details{margin-top:8px}
+.aibar summary{cursor:pointer;color:var(--muted);font-size:13.5px}
+.rej{border-left:3px solid var(--c-anomaly);padding:6px 10px;margin-top:8px;background:color-mix(in srgb,var(--c-anomaly) 6%,transparent);border-radius:0 6px 6px 0;font-size:13.5px}
+.rej q{font-family:var(--doc);font-style:italic;color:var(--muted)}
+.spin{width:14px;height:14px;border:2px solid var(--rule);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.f{background:var(--paper);border:1px solid var(--rule);border-left:3px solid var(--c);border-radius:4px 10px 10px 4px;padding:12px 14px;cursor:pointer;text-align:left;width:100%}
+.f:hover{border-color:color-mix(in srgb,var(--c) 50%,var(--rule));border-left-color:var(--c)}
+.f.sel{box-shadow:0 0 0 2px var(--c);border-color:var(--c)}
+.f-top{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-bottom:4px;flex-wrap:wrap}
+.f-top .cat{color:var(--c);font-weight:700}
+.sev{font-weight:600;padding:1px 7px;border-radius:999px;font-size:11.5px}
+.sev.high{background:color-mix(in srgb,var(--c-anomaly) 14%,transparent);color:var(--c-anomaly)}
+.sev.medium{background:color-mix(in srgb,var(--c-missing) 16%,transparent);color:var(--c-missing)}
+.sev.low{background:color-mix(in srgb,var(--c-obligation) 14%,transparent);color:var(--c-obligation)}
+.src{margin-left:auto;display:inline-flex;align-items:center;gap:5px}
+.src svg{width:13px;height:13px;color:var(--c-financial)}
+.f-title{font-weight:650;font-size:15px;line-height:1.35}
+.f-val{font-size:14.5px;margin-top:2px;font-variant-numeric:tabular-nums}
+.f-val .big{font-size:20px;font-weight:700;letter-spacing:-.01em;margin-right:8px}
+.rel{font-size:13px;font-weight:600;color:var(--muted)}
+.rel.soon{color:var(--c-anomaly)}
+.f-detail{color:var(--muted);font-size:13.5px;margin-top:4px}
+.cite{margin-top:9px;padding-top:9px;border-top:1px dashed var(--rule);font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:baseline}
+.cite .loc{font-weight:650;color:var(--ink);white-space:nowrap}
+.cite q{font-family:var(--doc);font-style:italic;quotes:"“" "”";overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.empty{padding:28px 18px;color:var(--muted);text-align:center;font-size:14px}
+.check{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--paper);border:1px solid var(--rule);border-radius:8px;font-size:14px}
+.check .ic{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;flex-shrink:0;color:#fff;font-size:12px;font-weight:700}
+.check .ic.y{background:var(--c-financial)}.check .ic.n{background:var(--c-anomaly)}
+.check button{margin-left:auto;border:none;background:none;color:var(--brand);cursor:pointer;font-size:13px;font-weight:600;padding:0}
+.json{margin:14px;padding:14px;background:var(--paper);border:1px solid var(--rule);border-radius:10px;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre;overflow:auto}
+.json .k{color:var(--muted)}.json .s{color:var(--c-financial)}.json .n{color:var(--c-deadline)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:10px;font-size:14px;box-shadow:var(--shadow);z-index:50;max-width:min(560px,90vw)}
+.overlay{position:fixed;inset:0;background:color-mix(in srgb,var(--bg) 70%,transparent);display:grid;place-items:center;z-index:40;backdrop-filter:blur(2px)}
+.overlay .box{background:var(--paper);border:1px solid var(--rule);border-radius:12px;padding:20px 24px;display:flex;gap:12px;align-items:center;box-shadow:var(--shadow)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (max-width:900px){
+  body{height:auto;min-height:100%}
+  .welcome-inner{grid-template-columns:1fr;gap:36px}
+  .work{grid-template-columns:1fr}
+  .viewer{max-height:62vh;padding:14px}
+  .panel{border-left:none;border-top:1px solid var(--rule)}
+  .paper{padding:22px 14px 26px 0;font-size:14px}
+  .ln{grid-template-columns:34px 14px 1fr}
+  header{padding:10px 14px;flex-wrap:wrap}
+  .tabs{order:3;flex-basis:100%}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="mark" aria-label="DocTrace AI"><span>DocTrace AI</span></div>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Open documents"></nav>
+  <button class="btn" id="addBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add document</button>
+  <input type="file" id="file" class="sr" accept=".pdf,.txt,.md,.csv,.docx,image/png,image/jpeg,image/webp" multiple>
+</header>
+<main id="main"></main>
+
+<script>
+/* DocTrace AI — extraction & verification engine (no DOM). */
+const DT = (() => {
+  const MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, sept: 8, oct: 9, nov: 10, dec: 11 };
+  const MON_RE = '(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
+  const CAT_ORDER = ['anomaly', 'deadline', 'missing', 'obligation', 'financial'];
+  const CAT_NAME = { deadline: 'Deadline', obligation: 'Obligation', anomaly: 'Anomaly', missing: 'Missing data', financial: 'Financial value' };
+
+  // ---------- dates ----------
+  const iso = (y, m, d) => {
+    const dt = new Date(Date.UTC(y, m, d));
+    if (dt.getUTCMonth() !== m || dt.getUTCDate() !== d) return null;
+    return dt.toISOString().slice(0, 10);
+  };
+  function findDates(text) {
+    const out = [];
+    const push = (m, v) => { if (v) out.push({ iso: v, str: m[0], index: m.index }); };
+    let m;
+    const r1 = new RegExp('\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+' + MON_RE + ',?\\s+(\\d{4})\\b', 'gi');
+    while ((m = r1.exec(text))) push(m, iso(+m[3], MONTHS[m[2].slice(0, 3).toLowerCase()], +m[1]));
+    const r2 = new RegExp('\\b' + MON_RE + '\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})\\b', 'gi');
+    while ((m = r2.exec(text))) push(m, iso(+m[3], MONTHS[m[1].slice(0, 3).toLowerCase()], +m[2]));
+    const r3 = /\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})\b/g;
+    while ((m = r3.exec(text))) push(m, iso(+m[3], +m[2] - 1, +m[1]));
+    const r4 = /\b(\d{4})-(\d{2})-(\d{2})\b/g;
+    while ((m = r4.exec(text))) push(m, iso(+m[1], +m[2] - 1, +m[3]));
+    return out.sort((a, b) => a.index - b.index);
+  }
+  const addDays = (isoStr, n) => { const d = new Date(isoStr + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const fmtDate = (isoStr) => { const d = new Date(isoStr + 'T00:00:00Z'); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); };
+  const todayIso = () => { const t = new Date(); return iso(t.getFullYear(), t.getMonth(), t.getDate()); };
+  const daysBetween = (a, b) => Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 86400000);
+
+  // ---------- money ----------
+  const MONEY_RE = /(?:₹|Rs\.?|INR|\$)\s*([\d,]+(?:\.\d{1,2})?)/g;
+  function findMoney(text) {
+    const out = []; let m; MONEY_RE.lastIndex = 0;
+    while ((m = MONEY_RE.exec(text))) {
+      const v = parseFloat(m[1].replace(/,/g, ''));
+      if (!isNaN(v)) out.push({ value: v, str: m[0], index: m.index });
+    }
+    return out;
+  }
+  const fmtMoney = (v) => '₹' + v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const near = (a, b, tol = 1) => Math.abs(a - b) <= tol;
+
+  // ---------- text → lines ----------
+  function parseText(text) {
+    const lines = []; let page = 1, n = 0;
+    const raw = text.replace(/\r/g, '').split(/\n/);
+    for (const rawLine of raw) {
+      const parts = rawLine.split('\f');
+      parts.forEach((part, pi) => {
+        if (pi > 0) { page++; n = 0; }
+        const pm = part.match(/^\s*-{2,}\s*page\s*(\d+)\s*-{2,}\s*$/i);
+        if (pm) { page = +pm[1]; n = 0; return; }
+        n++;
+        lines.push({ id: lines.length + 1, page, n, text: part.replace(/\s+$/, '') });
+      });
+    }
+    return lines;
+  }
+
+  // ---------- classification ----------
+  function classify(lines) {
+    const t = lines.map(l => l.text).join('\n').toLowerCase();
+    const score = (words) => words.reduce((s, w) => s + (t.split(w).length - 1), 0);
+    const s = {
+      invoice: score(['invoice', 'gstin', 'cgst', 'sgst', 'igst', 'hsn', 'bill to', 'grand total', 'taxable value']),
+      contract: score(['agreement', 'party', 'parties', 'terminat', 'shall', 'term', 'liability', 'confidential']) * 0.6,
+      compliance: score(['certificate', 'licence', 'license', 'no objection', 'valid until', 'valid till', 'issuing authority', 'compliance', 'inspection']) * 1.2,
+      report: score(['report', 'quarter', 'revenue', 'ebitda', 'yoy', 'financial year', 'prepared by']) * 0.9,
+    };
+    const best = Object.entries(s).sort((a, b) => b[1] - a[1])[0];
+    return best[1] > 0 ? best[0] : 'report';
+  }
+  const TYPE_NAME = { invoice: 'GST invoice', contract: 'Contract', compliance: 'Compliance certificate', report: 'Business report' };
+  const TYPE_LOWER = { invoice: 'GST invoice', contract: 'contract', compliance: 'compliance certificate', report: 'business report' };
+
+  // ---------- helpers ----------
+  const sentences = (text) => text.split(/(?<=[.;])\s+(?=[A-Z0-9(])/).map(s => s.trim()).filter(Boolean);
+  const afterColon = (text, labelRe) => {
+    const m = text.match(labelRe); if (!m) return null;
+    let rest = text.slice(m.index + m[0].length);
+    rest = rest.replace(/^[^:]*?:/, '');
+    return rest;
+  };
+  const isBlank = (v) => v == null || v.replace(/_+/g, '').replace(/\bdate\s*:?/ig, '').replace(/[-–—.\s]/g, '').length === 0;
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const clip = (s, n) => (s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s);
+  const GSTIN_RE = /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+  const numWordOrDigit = '(?:[a-z\\-]+\\s+)?\\(?(\\d+)\\)?';
+
+  // ---------- metadata ----------
+  function extractMeta(lines, type) {
+    const meta = { number: null, dates: {}, parties: [] };
+    for (const l of lines) {
+      const t = l.text;
+      const num = t.match(/\b(invoice|agreement|certificate|licen[cs]e|contract|report)\s*(?:no\.?|number|#)\s*:?\s*([A-Z0-9][A-Z0-9\/\-.]+)/i);
+      if (num && !meta.number) meta.number = { value: num[2], line: l.id };
+      const d = findDates(t);
+      if (!d.length) continue;
+      const lower = t.toLowerCase();
+      const set = (k) => { if (!meta.dates[k]) meta.dates[k] = { iso: d[0].iso, line: l.id }; };
+      if (/invoice\s*date/.test(lower)) set('invoice');
+      if (/effective date/.test(lower) || /\bmade on\b/.test(lower)) set('effective');
+      if (/date of issue|issue date|issued on/.test(lower)) set('issue');
+      if (/renew/.test(lower) && /renewal date|next renewal/.test(lower)) meta.dates.renewal = meta.dates.renewal || { iso: d[d.length - 1].iso, line: l.id };
+      if (/valid until|valid till|valid upto|expir/.test(lower)) set('expiry');
+    }
+    for (let i = 0; i < lines.length; i++) {
+      const t = lines[i].text;
+      const b = t.match(/between\s+(.+?)\s*(?:\(".+?"\))?\s+and\s+(.+?)\s*(?:\(".+?"\))?\s*\.?$/i);
+      if (b) meta.parties = [b[1].replace(/\s*\(.*$/, ''), b[2].replace(/\s*\(.*$/, '')];
+      if (/^\s*bill to\s*:?\s*$/i.test(t) && lines[i + 1]) meta.parties.push(lines[i + 1].text.trim());
+      const it = t.match(/issued to\s*:\s*(.+)/i); if (it) meta.parties.push(it[1].trim());
+    }
+    if (type === 'invoice' && lines[1] && !meta.vendor) meta.vendor = lines[1].text.trim();
+    const gst = [];
+    lines.forEach(l => { const g = l.text.match(/GSTIN\s*:?\s*([A-Z0-9]+)/i); if (g) gst.push({ value: g[1].toUpperCase(), line: l.id }); });
+    meta.gstins = gst;
+    return meta;
+  }
+
+  // ---------- rules ----------
+  function analyze(doc) {
+    const { lines } = doc;
+    const type = doc.type || classify(lines);
+    const meta = extractMeta(lines, type);
+    const F = []; let k = 0;
+    const add = (f) => { f.id = doc.id + '-r' + (++k); f.source = 'rules'; f.verified = f.verified || 'exact'; F.push(f); return f; };
+    const line = (id) => lines.find(l => l.id === id);
+    const today = todayIso();
+    const anchorFor = (phrase) => {
+      const p = phrase.toLowerCase();
+      if (/invoice/.test(p)) return ['invoice date', meta.dates.invoice];
+      if (/effective/.test(p)) return ['Effective Date', meta.dates.effective];
+      if (/renewal/.test(p)) return ['renewal date', meta.dates.renewal];
+      if (/expir|end of the term/.test(p)) return ['expiry date', meta.dates.expiry];
+      if (/issue/.test(p)) return ['date of issue', meta.dates.issue];
+      return [null, null];
+    };
+    const deadline = (title, dateIso, detail, l, quote, sev) => {
+      const dd = daysBetween(today, dateIso);
+      const severity = sev || (dd < 0 ? 'info' : dd <= 30 ? 'high' : dd <= 90 ? 'medium' : 'low');
+      add({ cat: 'deadline', title, value: fmtDate(dateIso), date: dateIso, detail, refs: [l.id], quote, severity });
+    };
+
+    // 1. deadlines — explicit and derived
+    const anchorLines = new Set(Object.values(meta.dates).map(d => d.line));
+    for (const l of lines) {
+      const t = l.text, lower = t.toLowerCase();
+      for (const s of sentences(t)) {
+        const sl = s.toLowerCase();
+        // derived: within N days of/from ANCHOR
+        let m = s.match(new RegExp('within\\s+' + numWordOrDigit + '\\s+(days?|months?)\\s+(?:of|from|after)\\s+(?:the\\s+)?([a-z ]{3,40})', 'i'));
+        if (m) {
+          const n = +m[1] * (/month/i.test(m[2]) ? 30 : 1);
+          const [aName, a] = anchorFor(m[3]);
+          if (a) {
+            const title = /pay|fee|invoice/i.test(s) ? 'Payment due' : /submit|report|application/i.test(s) ? 'Submission due' : /access|provide/i.test(s) ? 'Client action due' : 'Action due';
+            deadline(title, addDays(a.iso, n), `${m[1]} days after the ${aName} (${fmtDate(a.iso)}, line ${line(a.line).n} on p.${line(a.line).page})`, l, s);
+            continue;
+          }
+        }
+        m = s.match(new RegExp(numWordOrDigit + "\\s+days?(?:['’]s?)?\\s+(?:written\\s+)?(?:notice\\s+)?(?:prior to|before)\\s+(?:the\\s+)?(?:date of\\s+)?(renewal|expiry|expiration|end)", 'i'));
+        if (m) {
+          const [aName, a] = anchorFor(m[2]);
+          if (a) {
+            const title = /terminat/i.test(s) ? 'Last day to send termination notice' : /application|apply/i.test(s) ? 'Renewal application due' : 'Notice deadline';
+            deadline(title, addDays(a.iso, -+m[1]), `${cap(aName)} ${fmtDate(a.iso)} minus ${m[1]} days`, l, s);
+            continue;
+          }
+        }
+        const ds = findDates(s);
+        if (ds.length && !/\bdate\s*:\s*\d/i.test(s) && /\b(due|payable|deadline|valid until|valid till|valid upto|expir\w*|renew\w*|on or before|no later than|last date)\b/i.test(s)) {
+          const d = ds[ds.length - 1];
+          const title = /renew/i.test(sl) ? (/automatic/i.test(sl) ? 'Automatic renewal date' : 'Renewal date') : /valid|expir/i.test(sl) ? (type === 'compliance' ? 'Certificate expires' : 'Expiry date') : /due|payable|on or before/i.test(sl) ? 'Payment due' : 'Deadline';
+          deadline(title, d.iso, title === 'Automatic renewal date' ? 'The agreement renews by itself on this date unless terminated in time.' : 'Date stated in the document.', l, s);
+        }
+      }
+      void lower; void anchorLines;
+    }
+
+    // 2. obligations
+    for (const l of lines) {
+      for (const s of sentences(l.text)) {
+        const m = s.match(/^(.*?)\b(shall|must|agrees to|is required to|undertakes to)\b\s+(.*)$/i);
+        if (!m) continue;
+        let subj = m[1].split(',').pop().replace(/^[\d.\s]+/, '').replace(/^(the|a|an)\s+/i, '').trim();
+        if (!subj || /agreement|certificate|liabilit|payment|invoices?|^this|credit|fee|confidential information/i.test(subj) || /\bshall mean\b/i.test(s) || /^(stand|mean)\b/i.test(m[3])) continue;
+        if (/\bshall be payable\b/i.test(s)) continue;
+        const words = subj.split(/\s+/); subj = words.slice(-6).join(' ');
+        const action = m[3].replace(/\.$/, '');
+        add({ cat: 'obligation', title: `${cap(subj)} ${m[2].toLowerCase()} ${clip(action, 70)}`, value: cap(subj), detail: /within|every|by the|at least|once/i.test(action) ? 'Time-bound obligation — track it.' : 'Ongoing obligation.', refs: [l.id], quote: s, severity: 'info' });
+      }
+    }
+
+    // 3. financial values + invoice arithmetic
+    const items = [];
+    const ITEM_RE = /(\d+(?:\.\d+)?)\s+(?:₹|Rs\.?|INR)?\s*([\d,]+\.\d{2})\s+(?:₹|Rs\.?|INR)?\s*([\d,]+\.\d{2})\s*$/;
+    const labeled = [];
+    for (const l of lines) {
+      const im = l.text.match(ITEM_RE);
+      if (im && /[a-z]/i.test(l.text.slice(0, im.index))) {
+        const qty = +im[1], rate = +im[2].replace(/,/g, ''), amt = +im[3].replace(/,/g, '');
+        items.push({ l, qty, rate, amt, desc: l.text.slice(0, im.index).replace(/^\s*\d+[.)]?\s*/, '').replace(/\s+\d{4,8}\s*$/, '').trim(), str: im[0].trim() });
+        continue;
+      }
+      const ms = findMoney(l.text);
+      if (!ms.length) continue;
+      for (const mo of ms) {
+        const before = l.text.slice(0, mo.index);
+        const kw = (l.text.match(/(grand total|invoice total|total amount|amount due|taxable value|subtotal|sub-total|[cs]gst\s*@\s*[\d.]+%|igst\s*@\s*[\d.]+%|monthly fee|implementation fee|annual fee|security deposit|penalty|advance|fee|total)/i) || [])[1];
+        let label = kw ? cap(kw.toLowerCase().replace(/gst/, 'GST').replace(/^([cs])GST/, (x, c) => c.toUpperCase() + 'GST')) : clip(before.replace(/^[\d.\s]+/, '').replace(/[:\-–\s]+$/, '').trim(), 40) || 'Amount';
+        labeled.push({ l, label, value: mo.value, str: mo.str, kw: (kw || '').toLowerCase() });
+        add({ cat: 'financial', title: label, value: fmtMoney(mo.value), amount: mo.value, detail: /per month|monthly/i.test(l.text) ? 'Recurring amount.' : 'Amount stated in the document.', refs: [l.id], quote: l.text.trim(), severity: 'info' });
+      }
+    }
+    if (items.length) {
+      const sum = items.reduce((s, i) => s + i.amt, 0);
+      add({ cat: 'financial', title: `${items.length} line item${items.length > 1 ? 's' : ''}`, value: fmtMoney(sum), amount: sum, detail: 'Sum of the amount column.', refs: items.map(i => i.l.id), quote: items[0].l.text.trim(), severity: 'info' });
+      for (const i of items) {
+        if (!near(i.qty * i.rate, i.amt)) add({ cat: 'anomaly', title: `Line amount is wrong: ${clip(i.desc, 40)}`, value: `${fmtMoney(i.amt)} stated, ${fmtMoney(i.qty * i.rate)} expected`, detail: `${i.qty} × ${fmtMoney(i.rate)} = ${fmtMoney(i.qty * i.rate)}. Difference ${fmtMoney(i.amt - i.qty * i.rate)}.`, refs: [i.l.id], quote: i.str, severity: 'high', check: 'arithmetic' });
+      }
+      const sub = labeled.find(x => /taxable value|subtotal|sub-total/.test(x.kw));
+      if (sub && !near(sub.value, sum)) add({ cat: 'anomaly', title: 'Subtotal does not match line items', value: `${fmtMoney(sub.value)} vs ${fmtMoney(sum)}`, detail: 'The subtotal differs from the sum of the line-item amounts.', refs: [sub.l.id, ...items.map(i => i.l.id)], quote: sub.l.text.trim(), severity: 'high', check: 'arithmetic' });
+      const base = sub ? sub.value : sum;
+      const taxes = labeled.filter(x => /gst\s*@/.test(x.kw));
+      for (const tx of taxes) {
+        const r = parseFloat(tx.kw.match(/@\s*([\d.]+)/)[1]);
+        const exp = Math.round(base * r) / 100;
+        if (!near(tx.value, exp)) add({ cat: 'anomaly', title: `${tx.label} is miscalculated`, value: `${fmtMoney(tx.value)} stated, ${fmtMoney(exp)} expected`, detail: `${r}% of ${fmtMoney(base)} = ${fmtMoney(exp)}.`, refs: [tx.l.id], quote: tx.l.text.trim(), severity: 'high', check: 'arithmetic' });
+      }
+      const tot = labeled.find(x => /grand total|invoice total|total amount/.test(x.kw)) || labeled.filter(x => x.kw === 'total').pop();
+      if (tot) {
+        const exp = base + taxes.reduce((s, x) => s + x.value, 0);
+        if (!near(tot.value, exp)) add({ cat: 'anomaly', title: 'Grand total does not add up', value: `${fmtMoney(tot.value)} stated, ${fmtMoney(exp)} expected`, detail: `Subtotal ${fmtMoney(base)} + tax ${fmtMoney(exp - base)} = ${fmtMoney(exp)}. The invoice is ${tot.value > exp ? 'over' : 'under'}-billed by ${fmtMoney(Math.abs(tot.value - exp))}.`, refs: [tot.l.id, ...(sub ? [sub.l.id] : []), ...taxes.map(t => t.l.id)], quote: tot.l.text.trim(), severity: 'high', check: 'arithmetic' });
+      }
+    }
+
+    // 4. other anomalies
+    for (const g of meta.gstins) {
+      if (!GSTIN_RE.test(g.value)) add({ cat: 'anomaly', title: 'GSTIN format is invalid', value: g.value, detail: `A GSTIN has 15 characters in a fixed pattern; this one has ${g.value.length}. Input tax credit may be denied.`, refs: [g.line], quote: g.value, severity: 'high', check: 'consistency' });
+    }
+    if (meta.dates.invoice) {
+      for (const f of F.filter(f => f.cat === 'deadline' && f.title === 'Payment due')) if (f.date < meta.dates.invoice.iso) add({ cat: 'anomaly', title: 'Due date is before the invoice date', value: f.value, detail: `Invoice dated ${fmtDate(meta.dates.invoice.iso)}.`, refs: f.refs, quote: f.quote, severity: 'high', check: 'consistency' });
+    }
+    const RISK = [
+      [/renew\w*\s+automatically|automatic(?:ally)?\s+renew|auto-?renew/i, 'Automatic renewal clause', 'The contract renews unless someone acts before the notice deadline.', 'medium'],
+      [/liabilit\w*[^.]*\bunlimited\b|\bunlimited liabilit/i, 'Unlimited liability', 'One party carries uncapped liability — negotiate a cap.', 'high'],
+      [/sole discretion/i, 'One-sided discretion', 'A party can act at its sole discretion.', 'medium'],
+      [/without (?:any )?(?:prior )?notice/i, 'Action without notice', 'Allows action without prior notice.', 'medium'],
+      [/non-refundable/i, 'Non-refundable payment', 'Money paid cannot be recovered.', 'low'],
+    ];
+    for (const l of lines) {
+      for (const s of sentences(l.text)) {
+        for (const [re, title, detail, sev] of RISK) if (re.test(s)) add({ cat: 'anomaly', title, value: 'Risky clause', detail, refs: [l.id], quote: s, severity: sev, check: 'clause' });
+        const ir = s.match(/(\d+(?:\.\d+)?)\s*%\s*per\s*month/i);
+        if (ir && +ir[1] >= 2) add({ cat: 'anomaly', title: 'High late-payment interest', value: `${ir[1]}% per month (${(+ir[1] * 12).toFixed(0)}% a year)`, detail: 'Well above typical commercial rates — check before accepting.', refs: [l.id], quote: s, severity: 'medium', check: 'clause' });
+      }
+    }
+
+    // 5. missing data (schema checklist)
+    const SCHEMA = {
+      invoice: [['Invoice number', /invoice\s*(no|number|#)/i, true], ['Invoice date', /invoice\s*date/i, true], ['Supplier GSTIN', /gstin/i, true], ['Buyer GSTIN', 'gstin2'], ['HSN / SAC codes', /\b(hsn|sac)\b/i, false], ['Purchase order reference', /purchase order|\bp\.?o\.?\s*(no|ref|number)/i, true], ['Payment terms', /payment terms|due date|payable/i, false], ['Grand total', /grand total|invoice total|total amount/i, false], ['Authorised signature', /authori[sz]ed signatory|signature/i, true]],
+      contract: [['Parties', /\bbetween\b.+\band\b/i, false], ['Effective date', /effective date|commence/i, false], ['Term', /\bterm\b/i, false], ['Payment terms', /payable|\bfee\b/i, false], ['Termination clause', /terminat/i, false], ['Liability clause', /liabilit/i, false], ['Confidentiality clause', /confidential/i, false], ['Governing law', /governing law|laws of|jurisdiction/i, false], ['Dispute resolution', /arbitrat|dispute resolution|disputes? (?:shall|will|arising)/i, false], ['Signatures', 'sign', false]],
+      compliance: [['Certificate number', /(certificate|licen[cs]e|registration)\s*(no|number)/i, true], ['Holder name', /issued to|licensee|holder/i, true], ['Premises address', /premises|address/i, true], ['Date of issue', /date of issue|issue date|issued on/i, true], ['Validity / expiry', /valid until|valid till|valid upto|expir/i, true], ['Issuing authority', /issuing authority|issued by/i, true], ['Officer signature', /signature/i, true]],
+      report: [['Reporting period', /period|quarter|financial year|\bfy\b/i, false], ['Prepared by', /prepared by|author/i, true], ['Revenue figure', /revenue|turnover|sales/i, false], ['Approval / sign-off', /approved by|signature/i, true]],
+    };
+    const schemaName = TYPE_NAME[type] + ' checklist';
+    const checklist = [];
+    for (const [name, test, needsValue] of SCHEMA[type]) {
+      if (test === 'gstin2') {
+        const ok = meta.gstins.length >= 2; checklist.push({ name, ok, line: ok ? meta.gstins[1].line : null });
+        if (!ok) add({ cat: 'missing', title: 'Buyer GSTIN missing', value: 'Not found', detail: `Only ${meta.gstins.length} GSTIN found — B2B invoices need the buyer's GSTIN. Searched all ${lines.length} lines.`, refs: [], quote: '', severity: 'high', schema: schemaName });
+        continue;
+      }
+      if (test === 'sign') {
+        const sl = lines.filter(l => /signed for|signature/i.test(l.text));
+        if (!sl.length) { checklist.push({ name, ok: false }); add({ cat: 'missing', title: 'Signature block missing', value: 'Not found', detail: `No signature lines in ${lines.length} lines.`, refs: [], quote: '', severity: 'high', schema: schemaName }); continue; }
+        let ok = true;
+        for (const l of sl) {
+          const who = (l.text.match(/signed for\s+(.+?)\s*:/i) || [])[1] || 'a party';
+          const v = afterColon(l.text, /signed for|signature/i);
+          if (isBlank(v)) { ok = false; add({ cat: 'missing', title: `Signature missing: ${who}`, value: 'Field is blank', detail: 'The signature field exists but is empty — the agreement may not be enforceable against this party.', refs: [l.id], quote: l.text.trim(), severity: 'high', schema: schemaName }); }
+        }
+        checklist.push({ name, ok });
+        continue;
+      }
+      const l = lines.find(x => test.test(x.text));
+      if (!l) {
+        checklist.push({ name, ok: false });
+        add({ cat: 'missing', title: `${name} missing`, value: 'Not found', detail: `Expected in a ${TYPE_LOWER[type]}. Searched all ${lines.length} lines on ${lines[lines.length - 1].page} page(s).`, refs: [], quote: '', severity: /signature|gstin|number|expiry/i.test(name) ? 'high' : 'medium', schema: schemaName });
+        continue;
+      }
+      if (needsValue && /:/.test(l.text) && isBlank(afterColon(l.text, test))) {
+        checklist.push({ name, ok: false, line: l.id });
+        add({ cat: 'missing', title: `${name} is blank`, value: 'Field is empty', detail: 'The label is present but no value was filled in.', refs: [l.id], quote: l.text.trim(), severity: /signature/i.test(name) ? 'high' : 'medium', schema: schemaName });
+        continue;
+      }
+      checklist.push({ name, ok: true, line: l.id });
+    }
+    return { type, meta, findings: F, checklist, items };
+  }
+
+  // ---------- cross-document ----------
+  function crossDoc(docs) {
+    const out = [];
+    const inv = docs.filter(d => d.type === 'invoice' && d.meta && d.meta.number);
+    for (let i = 0; i < inv.length; i++) for (let j = 0; j < i; j++) {
+      const a = inv[i], b = inv[j];
+      if (a.meta.number.value.toUpperCase() === b.meta.number.value.toUpperCase()) {
+        const gA = (a.meta.gstins[0] || {}).value, gB = (b.meta.gstins[0] || {}).value;
+        out.push({ doc: a.id, f: { id: a.id + '-x' + b.id, cat: 'anomaly', source: 'rules', verified: 'exact', title: 'Duplicate invoice number', value: a.meta.number.value, detail: `Same invoice number as “${b.name}”${gA && gA === gB ? ' from the same supplier GSTIN' : ''}. Hold payment until confirmed — this may be a double bill.`, refs: [a.meta.number.line], quote: a.meta.number.value, severity: 'high', check: 'cross-document', other: b.id } });
+      }
+    }
+    return out;
+  }
+
+  // ---------- AI prompt + verification ----------
+  function buildPrompt(doc) {
+    let body = '', budget = 45000;
+    for (const l of doc.lines) { const s = `[L${l.id}|p${l.page}] ${l.text}\n`; if (budget - s.length < 0) break; body += s; budget -= s.length; }
+    return `You are a meticulous document analyst. Analyse the ${TYPE_NAME[doc.type]} below and find anything a finance, legal or compliance reviewer must know.
+
+Categories:
+- "deadline": a date by which something must happen (give "date" as YYYY-MM-DD; compute relative dates like "30 days after the invoice date" from dates in the text)
+- "obligation": something a party must do
+- "anomaly": errors, inconsistencies, suspicious or risky terms (check arithmetic yourself)
+- "missing": information a document of this type should contain but does not, or fields left blank
+- "financial": important monetary amounts
+
+Strict rules — every finding is verified by software and rejected if it breaks them:
+1. "line_ids" must list the [L..] number(s) the evidence is on.
+2. "quote" must be copied VERBATIM from those lines (5–25 words, no paraphrasing).
+3. For "missing" findings with nothing to quote, use "line_ids": [] and "quote": "", and give 2–4 "search_terms" — words that would appear in the document if the item were present.
+4. Only report what the text supports. At most 20 findings.
+
+Reply with only JSON in this shape:
+{"findings":[{"category":"deadline","title":"short title","value":"short value","explanation":"one sentence","severity":"high|medium|low|info","line_ids":[12],"quote":"verbatim text","date":"2026-10-15","search_terms":[]}]}
+
+Document "${doc.name}" (each line starts with its id and page):
+${body}`;
+  }
+  const norm = (s) => (s || '').toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[^a-z0-9₹%'. ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  function verify(doc, raw, idx) {
+    const cat = String(raw.category || '').toLowerCase();
+    const base = { id: doc.id + '-a' + idx, source: 'ai', cat, title: String(raw.title || '').slice(0, 120), value: String(raw.value || '').slice(0, 80), detail: String(raw.explanation || '').slice(0, 300), severity: ['high', 'medium', 'low', 'info'].includes(raw.severity) ? raw.severity : 'info', refs: [], quote: String(raw.quote || '') };
+    if (!CAT_NAME[cat]) return { ok: false, f: base, reason: 'Unknown category.' };
+    if (raw.date && /^\d{4}-\d{2}-\d{2}$/.test(raw.date)) { base.date = raw.date; if (!base.value) base.value = fmtDate(raw.date); }
+    const ids = (Array.isArray(raw.line_ids) ? raw.line_ids : []).map(x => +String(x).replace(/\D/g, '')).filter(x => doc.lines.some(l => l.id === x));
+    const q = norm(base.quote);
+    if (cat === 'missing' && !q) {
+      const terms = (raw.search_terms || []).map(norm).filter(t => t.length > 2);
+      if (!terms.length) return { ok: false, f: base, reason: 'Absence claim without search terms — cannot be checked.' };
+      const all = norm(doc.lines.map(l => l.text).join(' '));
+      const hit = terms.find(t => all.includes(t));
+      if (hit) {
+        const l = doc.lines.find(x => norm(x.text).includes(hit));
+        return { ok: false, f: base, reason: `Claimed missing, but “${hit}” appears on p.${l.page} line ${l.n}.` };
+      }
+      base.verified = 'absence'; base.schema = 'searched: ' + terms.join(', ');
+      return { ok: true, f: base };
+    }
+    if (q.length < 4) return { ok: false, f: base, reason: 'No source quote given.' };
+    const textOf = (arr) => norm(arr.map(id => doc.lines.find(l => l.id === id).text).join(' '));
+    const widen = (arr) => [...new Set(arr.flatMap(id => [id - 1, id, id + 1]))].filter(x => doc.lines.some(l => l.id === x)).sort((a, b) => a - b);
+    if (ids.length && textOf(widen(ids)).includes(q)) { base.refs = ids; base.verified = 'exact'; return { ok: true, f: base }; }
+    const found = doc.lines.filter(l => norm(l.text).includes(q)).map(l => l.id);
+    if (found.length) { base.refs = found.slice(0, 3); base.verified = ids.length ? 'relocated' : 'exact'; return { ok: true, f: base }; }
+    const toks = q.split(' ').filter(t => t.length > 2);
+    if (ids.length && toks.length >= 4) {
+      const hay = textOf(widen(ids)); const hits = toks.filter(t => hay.includes(t)).length;
+      if (hits / toks.length >= 0.85) { base.refs = ids; base.verified = 'fuzzy'; return { ok: true, f: base }; }
+    }
+    return { ok: false, f: base, reason: ids.length ? `Quote not found on cited line${ids.length > 1 ? 's' : ''} (L${ids.join(', L')}).` : 'Quote not found anywhere in the document.' };
+  }
+  function similar(a, b) {
+    const ta = new Set(norm(a).split(' ').filter(t => t.length > 3)), tb = new Set(norm(b).split(' ').filter(t => t.length > 3));
+    if (!ta.size || !tb.size) return 0; let n = 0; ta.forEach(t => { if (tb.has(t)) n++; });
+    return n / Math.min(ta.size, tb.size);
+  }
+
+  // ---------- samples ----------
+  const SAMPLES = [
+    {
+      key: 'invoice', name: 'GST invoice — Shree Ganesh Office Supplies', short: 'GST invoice', blurb: 'Arithmetic errors, invalid GSTIN, blank fields', text: `TAX INVOICE
+Shree Ganesh Office Supplies
+14, Zone-II, M.P. Nagar, Bhopal, Madhya Pradesh 462011
+GSTIN: 23AAKFS4821M1Z5
+
+Invoice No: SGOS/2026/0423
+Invoice Date: 15 September 2026
+Place of Supply: Madhya Pradesh (23)
+
+Bill To:
+Nimbus Logistics Pvt Ltd
+Plot 7, Industrial Area, Govindpura, Bhopal 462023
+GSTIN: 23AACCN7719Q1Z
+
+Sr  Description                        HSN    Qty   Rate          Amount
+1.  A4 Copier Paper, 75 GSM (Ream)     4802   40    ₹ 285.00      ₹ 11,400.00
+2.  Toner Cartridge HP 88A             8443   6     ₹ 3,150.00    ₹ 18,900.00
+3.  Box Files, Heavy Duty              4820   50    ₹ 95.00       ₹ 4,750.00
+4.  Whiteboard Markers (Pack of 10)    9608   12    ₹ 420.00      ₹ 5,400.00
+5.  Ergonomic Office Chair             9401   4     ₹ 6,800.00    ₹ 27,200.00
+--- Page 2 ---
+Taxable Value (Subtotal)                                    ₹ 67,650.00
+CGST @ 9%                                                   ₹ 6,088.50
+SGST @ 9%                                                   ₹ 6,088.50
+Grand Total                                                 ₹ 80,827.00
+Amount in words: Rupees Eighty Thousand Eight Hundred Twenty-Seven Only
+
+Payment Terms: Payment is due within 30 days of the invoice date.
+Late payment shall attract interest @ 3% per month on the outstanding amount.
+Bank: State Bank of India, M.P. Nagar Branch, IFSC SBIN0003867
+Purchase Order Ref:
+Authorised Signatory: ____________________`
+    },
+    {
+      key: 'contract', name: 'Master services agreement — Vertex Cloud', short: 'Service agreement', blurb: 'Notice deadline, auto-renewal, unsigned', text: `MASTER SERVICES AGREEMENT
+Agreement No: MSA/NL/2026/017
+
+This Agreement is made on 1 April 2026 (the "Effective Date") between Nimbus Logistics Pvt Ltd ("Client") and Vertex Cloud Solutions LLP ("Service Provider").
+
+1. TERM
+1.1 This Agreement shall commence on the Effective Date and continue for an initial term of one (1) year.
+1.2 This Agreement shall renew automatically for successive one-year terms, the next renewal date being 1 April 2027.
+
+2. SERVICES AND OBLIGATIONS
+2.1 The Service Provider shall maintain 99.5% monthly uptime for the fleet tracking platform.
+2.2 The Service Provider shall resolve Priority-1 incidents within 4 hours of notification.
+2.3 The Client shall provide access to its data systems within 7 days of the Effective Date.
+2.4 The Service Provider must submit a monthly performance report by the 5th day of each month.
+
+3. FEES AND PAYMENT
+3.1 The Client shall pay a monthly fee of ₹ 1,20,000.00 plus applicable GST.
+3.2 A one-time implementation fee of ₹ 2,50,000.00 is payable within 15 days of the Effective Date.
+3.3 All undisputed invoices shall be payable within thirty (30) days of receipt.
+--- Page 2 ---
+4. SERVICE CREDITS
+4.1 If monthly uptime falls below 99.5%, the Service Provider shall issue a credit of 5% of the monthly fee for each 0.5% shortfall.
+
+5. LIABILITY
+5.1 The Client's liability under this Agreement shall be unlimited.
+5.2 The Service Provider's aggregate liability shall not exceed the fees paid in the preceding three (3) months.
+
+6. TERMINATION
+6.1 Either party may terminate this Agreement by giving sixty (60) days' written notice prior to the renewal date.
+6.2 The Service Provider may suspend services at its sole discretion without prior notice.
+
+7. CONFIDENTIALITY
+7.1 Each party shall keep the other party's confidential information secret for three (3) years after termination.
+
+Signed for Nimbus Logistics Pvt Ltd: ____________________   Date: ________
+Signed for Vertex Cloud Solutions LLP: Rahul Mehta, Director   Date: 1 April 2026`
+    },
+    {
+      key: 'compliance', name: 'Fire safety NOC — Warehouse Block B', short: 'Fire safety NOC', blurb: 'Expiry, renewal window, conditions', text: `MADHYA PRADESH FIRE & EMERGENCY SERVICES
+FIRE SAFETY NO OBJECTION CERTIFICATE (RENEWAL)
+
+Certificate No: MPFES/BPL/2025/08812
+Issued to: Nimbus Logistics Pvt Ltd
+Premises: Warehouse Block B, Plot 7, Industrial Area, Govindpura, Bhopal 462023
+Occupancy Type: Storage (Group H)
+Date of Issue: 1 December 2025
+Valid Until: 30 November 2026
+
+CONDITIONS
+1. The occupier shall maintain all fire extinguishers in working condition and get them refilled every 12 months.
+2. The occupier must conduct a fire evacuation drill at least once every 6 months and keep records on site.
+3. An application for renewal must be submitted at least 30 days before the date of expiry.
+4. Any structural change to the premises shall be reported to this office within 15 days.
+5. This certificate shall stand cancelled if the conditions above are violated.
+
+Inspection Findings: Sprinkler system tested and found satisfactory. Hydrant pressure: 3.2 kg/cm2.
+
+Issuing Authority: Divisional Fire Officer, Bhopal
+Signature: ____________________`
+    },
+    {
+      key: 'duplicate', name: 'Invoice — Shree Ganesh (second copy)', short: 'Second invoice', blurb: 'Open after the GST invoice: duplicate check', text: `TAX INVOICE
+Shree Ganesh Office Supplies
+14, Zone-II, M.P. Nagar, Bhopal, Madhya Pradesh 462011
+GSTIN: 23AAKFS4821M1Z5
+
+Invoice No: SGOS/2026/0423
+Invoice Date: 22 September 2026
+Place of Supply: Madhya Pradesh (23)
+
+Bill To:
+Nimbus Logistics Pvt Ltd
+Plot 7, Industrial Area, Govindpura, Bhopal 462023
+GSTIN: 23AACCN7719Q1ZX
+
+Sr  Description                        HSN    Qty   Rate          Amount
+1.  Ergonomic Office Chair             9401   10    ₹ 6,800.00    ₹ 68,000.00
+
+Taxable Value (Subtotal)                                    ₹ 68,000.00
+CGST @ 9%                                                   ₹ 6,120.00
+SGST @ 9%                                                   ₹ 6,120.00
+Grand Total                                                 ₹ 80,240.00
+
+Payment Terms: Payment is due on or before 22 October 2026.
+Purchase Order Ref: PO/NL/2026/311
+Authorised Signatory: Suresh Patel`
+    },
+  ];
+
+  return { parseText, classify, analyze, crossDoc, buildPrompt, verify, similar, SAMPLES, CAT_NAME, CAT_ORDER, TYPE_NAME, fmtDate, fmtMoney, daysBetween, todayIso };
+})();
+
+
+</script>
+<script>
+(() => {
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const SEV = { high: 0, medium: 1, low: 2, info: 3 };
+const PLURAL = { anomaly: 'Anomalies', deadline: 'Deadlines', missing: 'Missing data', obligation: 'Obligations', financial: 'Financial values' };
+const ICON_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const state = { docs: [], active: null, filter: 'all', sel: null, tab: 'findings', seq: 0 };
+let sample = null, downloads = null, imageOk = false;
+
+if (window.claude && typeof window.claude.use === 'function') {
+  window.claude.use('sample').then(async s => { sample = s; if (s) { try { const lim = await s.limits(); imageOk = !!(lim && lim.images); } catch (e) {} } render(); }).catch(() => {});
+  window.claude.use('downloads').then(d => { downloads = d; render(); }).catch(() => {});
+}
+
+// ---------- documents ----------
+function addDoc(name, text, origin) {
+  const lines = DT.parseText(text).slice(0, 4000);
+  if (!lines.some(l => l.text.trim())) { toast(`“${name}” has no readable text.`); return; }
+  const doc = { id: 'd' + (++state.seq), name, lines, origin };
+  Object.assign(doc, DT.analyze(doc));
+  doc.ruleFindings = doc.findings.slice();
+  state.docs.push(doc);
+  refreshCross();
+  state.active = doc.id; state.sel = null; state.filter = 'all'; state.tab = 'findings';
+  render();
+}
+function refreshCross() {
+  const cross = DT.crossDoc(state.docs);
+  for (const d of state.docs) {
+    d.findings = d.findings.filter(f => f.check !== 'cross-document');
+    cross.filter(c => c.doc === d.id).forEach(c => d.findings.push(c.f));
+  }
+}
+const cur = () => state.docs.find(d => d.id === state.active);
+
+// ---------- file reading ----------
+const loaded = {};
+function loadScript(src) {
+  if (loaded[src]) return loaded[src];
+  return (loaded[src] = new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('Could not load ' + src)); document.head.appendChild(s); }));
+}
+async function readPdf(buf) {
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+  const lib = window['pdfjs-dist/build/pdf'];
+  lib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pdf = await lib.getDocument({ data: buf }).promise;
+  const pages = [];
+  for (let p = 1; p <= Math.min(pdf.numPages, 60); p++) {
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    const rows = [];
+    for (const it of tc.items) {
+      if (!it.str) continue;
+      const y = it.transform[5], x = it.transform[4];
+      let row = rows.find(r => Math.abs(r.y - y) < 3);
+      if (!row) rows.push(row = { y, items: [] });
+      row.items.push({ x, s: it.str, w: it.width });
+    }
+    rows.sort((a, b) => b.y - a.y);
+    pages.push(rows.map(r => { r.items.sort((a, b) => a.x - b.x); let out = '', end = null; for (const i of r.items) { if (end !== null) { const gap = i.x - end; out += gap > 18 ? '    ' : gap > 1.5 && !out.endsWith(' ') && !i.s.startsWith(' ') ? ' ' : ''; } out += i.s; end = i.x + i.w; } return out; }).join('\n'));
+  }
+  return pages.join('\f');
+}
+async function transcribeImage(file) {
+  const { text } = await sample('Transcribe every piece of text in this document image exactly as printed. Keep the original line breaks and the order of lines, keep numbers, currency symbols and dates exactly. For tables, put each row on one line with columns separated by 4 spaces. Output only the transcribed text, nothing else.', { images: [file], modelTier: 'default' });
+  return text;
+}
+async function handleFiles(files) {
+  for (const file of files) {
+    const name = file.name, ext = name.split('.').pop().toLowerCase();
+    try {
+      if (file.type.startsWith('image/')) {
+        if (!sample || !imageOk) { toast('Scanned images need Claude to transcribe them. Open this page inside Claude, or upload a PDF with selectable text.'); continue; }
+        busy(`Claude is transcribing ${name}…`);
+        const text = await transcribeImage(file); busy(null);
+        addDoc(name, text, 'image'); continue;
+      }
+      busy(`Reading ${name}…`);
+      let text;
+      if (ext === 'pdf') { text = await readPdf(await file.arrayBuffer()); if (!text.replace(/\s/g, '')) { busy(null); toast(`“${name}” is a scanned PDF with no text layer. Upload the pages as images so Claude can transcribe them.`); continue; } }
+      else if (ext === 'docx') { await loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js'); text = (await window.mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() })).value; }
+      else text = await file.text();
+      busy(null);
+      addDoc(name, text, 'upload');
+    } catch (e) {
+      busy(null);
+      toast(e && e.code === 'not_granted' ? 'Transcription needs your permission to use Claude.' : `Could not read “${name}”: ${e.message || e}`);
+    }
+  }
+}
+
+// ---------- AI deep scan ----------
+let ctl = null;
+async function deepScan() {
+  const doc = cur(); if (!doc || !sample) return;
+  ctl = new AbortController();
+  doc.ai = { status: 'running', chars: 0 };
+  render();
+  try {
+    const { text } = await sample(DT.buildPrompt(doc), { signal: ctl.signal, modelTier: 'default', onText: ({ text }) => { doc.ai.chars = text.length; const el = $('#aiprog'); if (el) el.textContent = `Receiving findings… ${(text.length / 1000).toFixed(1)}k characters`; } });
+    const js = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
+    let arr = [];
+    try { arr = JSON.parse(js).findings || []; } catch (e) { throw { code: 'parse', message: 'Claude’s reply was not valid JSON.' }; }
+    const verified = [], rejected = []; let confirmed = 0;
+    doc.findings = doc.findings.filter(f => f.source !== 'ai');
+    doc.findings.forEach(f => delete f.confirmed);
+    arr.slice(0, 30).forEach((raw, i) => {
+      const r = DT.verify(doc, raw, i);
+      if (!r.ok) { rejected.push(r); return; }
+      const f = r.f;
+      const twin = doc.findings.find(g => g.cat === f.cat && ((f.date && g.date === f.date) || (g.refs.some(x => f.refs.includes(x)) && (DT.similar(g.title + ' ' + g.value, f.title + ' ' + f.value) >= 0.34 || g.cat === 'deadline' || g.cat === 'obligation')) || DT.similar(g.title, f.title) >= 0.6));
+      if (twin) { twin.confirmed = true; confirmed++; return; }
+      verified.push(f); doc.findings.push(f);
+    });
+    doc.ai = { status: 'done', proposed: arr.length, added: verified.length, confirmed, rejected };
+  } catch (e) {
+    const code = e && e.code;
+    doc.ai = { status: 'error', message: code === 'cancelled' ? 'Deep scan stopped. Rule-based findings are unchanged.' : code === 'not_granted' ? 'Deep scan needs your permission to use Claude. Rule-based findings are unchanged.' : code === 'rate_limited' ? 'Too many requests right now — try the deep scan again in a minute.' : (e && e.message) || 'Deep scan failed.' };
+  }
+  ctl = null; render();
+}
+
+// ---------- rendering ----------
+function sortedFindings(doc) {
+  const order = DT.CAT_ORDER;
+  return doc.findings.slice().sort((a, b) => order.indexOf(a.cat) - order.indexOf(b.cat) || SEV[a.severity] - SEV[b.severity] || (a.date || '').localeCompare(b.date || ''));
+}
+function relDays(isoDate) {
+  const d = DT.daysBetween(DT.todayIso(), isoDate);
+  if (d === 0) return ['today', true];
+  if (d > 0) return [d === 1 ? 'tomorrow' : d < 60 ? `in ${d} days` : `in ${Math.round(d / 30)} months`, d <= 30];
+  const a = -d; return [a < 60 ? `passed ${a} days ago` : `passed ${Math.round(a / 30)} months ago`, false];
+}
+function locOf(doc, id) { const l = doc.lines.find(x => x.id === id); return l ? `Page ${l.page}, line ${l.n}` : ''; }
+
+function render() {
+  const tabs = $('#tabs');
+  tabs.innerHTML = state.docs.map(d => `<button class="tab" role="tab" aria-selected="${d.id === state.active}" data-doc="${d.id}" title="${esc(d.name)}">${esc(d.name)}</button>`).join('');
+  const main = $('#main');
+  const doc = cur();
+  if (!doc) { main.innerHTML = welcomeHtml(); bindWelcome(); return; }
+  const counts = {}; doc.findings.forEach(f => counts[f.cat] = (counts[f.cat] || 0) + 1);
+  const pages = doc.lines[doc.lines.length - 1].page;
+  main.innerHTML = `
+  <div class="toolbar">
+    <h1 class="docname">${esc(doc.name)}</h1>
+    <span class="badge">${esc(DT.TYPE_NAME[doc.type])}</span>
+    <span class="badge">${pages} page${pages > 1 ? 's' : ''}, ${doc.lines.length} lines</span>
+    ${doc.origin === 'image' ? '<span class="badge">Text transcribed by Claude</span>' : ''}
+    <span class="spacer"></span>
+    ${sample ? `<button class="btn primary" id="scanBtn" type="button" ${doc.ai && doc.ai.status === 'running' ? 'disabled' : ''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>${doc.ai && doc.ai.status === 'done' ? 'Run deep scan again' : 'Deep scan with Claude'}</button>` : ''}
+    ${downloads ? '<button class="btn" id="exportBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Export report</button>' : ''}
+  </div>
+  <div class="filters" role="group" aria-label="Filter findings">
+    <button class="pill" data-filter="all" aria-pressed="${state.filter === 'all'}"><span class="dot"></span>All <span class="n">${doc.findings.length}</span></button>
+    ${DT.CAT_ORDER.map(c => `<button class="pill cat-${c}" data-filter="${c}" aria-pressed="${state.filter === c}"><span class="dot"></span>${PLURAL[c]} <span class="n">${counts[c] || 0}</span></button>`).join('')}
+  </div>
+  <div class="work">
+    <section class="viewer" id="viewer" aria-label="Document">${viewerHtml(doc)}</section>
+    <section class="panel" id="panel" aria-label="Findings">
+      <div class="ptabs" role="tablist">
+        ${[['findings', 'Findings'], ['checklist', 'Checklist'], ['json', 'Traceable JSON']].map(([k, n]) => `<button class="ptab" role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${n}</button>`).join('')}
+      </div>
+      ${aiBarHtml(doc)}
+      ${state.tab === 'findings' ? findingsHtml(doc) : state.tab === 'checklist' ? checklistHtml(doc) : `<pre class="json">${jsonHtml(report(doc))}</pre>`}
+    </section>
+  </div>`;
+  bindWorkspace(doc);
+}
+
+function welcomeHtml() {
+  const tiles = DT.SAMPLES.map((s, i) => {
+    const cats = [['anomaly', 'missing'], ['deadline', 'anomaly'], ['deadline', 'obligation'], ['anomaly', 'financial']][i];
+    const bars = [70, 92, 55, 84, 64, 90].map((w, j) => `<i class="${j === 1 ? 'h cat-' + cats[0] : j === 4 ? 'h cat-' + cats[1] : ''}" style="width:${w}%"></i>`).join('');
+    return `<button class="sample" data-sample="${i}" type="button"><div class="thumb">${bars}</div><div class="meta"><b>${esc(s.short)}</b><span>${esc(s.blurb)}</span></div></button>`;
+  }).join('');
+  return `<div class="welcome"><div class="welcome-inner">
+    <div>
+      <h1>Every deadline, obligation and anomaly, with the line it came from.</h1>
+      <p class="lede">Drop in an invoice, contract, report or compliance certificate. DocTrace checks the arithmetic, dates, clauses and required fields, and links every finding to its exact place in the document.</p>
+      <div class="drop" id="drop" role="button" tabindex="0" aria-label="Choose a document to analyse">
+        <div class="drop-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 18v-6M9 15l3-3 3 3"/></svg></div>
+        <div><strong>Drop a document here or choose a file</strong><small>PDF with text, DOCX, TXT${imageOk ? ', or a photo of a page' : ''}. Files are read in your browser.</small></div>
+      </div>
+      <p class="note">${sample ? 'Rule-based checks run instantly. “Deep scan with Claude” adds AI findings, and each one is kept only if its quote is found in the document.' : 'Rule-based checks run instantly in your browser. Open this page inside Claude to enable the AI deep scan.'}</p>
+    </div>
+    <div class="samples"><h2>Or open a sample document</h2><div class="sample-grid">${tiles}</div>
+      <p class="note">Open the GST invoice first, then the second invoice, to see the duplicate-bill check across documents.</p></div>
+  </div></div>`;
+}
+
+function viewerHtml(doc) {
+  const vis = doc.findings.filter(f => state.filter === 'all' || f.cat === state.filter);
+  const ranges = {};
+  const ordered = vis.slice().sort((a, b) => (b.id === state.sel) - (a.id === state.sel) || DT.CAT_ORDER.indexOf(a.cat) - DT.CAT_ORDER.indexOf(b.cat) || b.refs.length < a.refs.length);
+  for (const f of ordered) {
+    for (const ref of f.refs) {
+      const l = doc.lines.find(x => x.id === ref); if (!l) continue;
+      const lower = l.text.toLowerCase(); let s = -1, e = -1;
+      if (f.quote) { s = lower.indexOf(f.quote.toLowerCase()); if (s >= 0) e = s + f.quote.length; }
+      if (s < 0) { s = l.text.length - l.text.trimStart().length; e = l.text.trimEnd().length; }
+      if (e <= s) continue;
+      (ranges[ref] = ranges[ref] || []).push({ s, e, cat: f.cat, fid: f.id });
+    }
+  }
+  const pages = {};
+  doc.lines.forEach(l => (pages[l.page] = pages[l.page] || []).push(l));
+  const total = Object.keys(pages).length;
+  return Object.entries(pages).map(([p, ls]) => `<div class="pagelabel">Page ${p} of ${total}</div><div class="paper">${ls.map(l => lineHtml(l, ranges[l.id] || [])).join('')}</div>`).join('');
+}
+function lineHtml(l, rs) {
+  const cats = [...new Set(rs.map(r => r.cat))];
+  const acc = [];
+  for (const r of rs) if (!acc.some(a => r.s < a.e && r.e > a.s)) acc.push(r);
+  acc.sort((a, b) => a.s - b.s);
+  let html = '', pos = 0;
+  for (const r of acc) {
+    html += esc(l.text.slice(pos, r.s));
+    html += `<mark class="m cat-${r.cat}${r.fid === state.sel ? ' sel' : ''}" data-f="${r.fid}">${esc(l.text.slice(r.s, r.e))}</mark>`;
+    pos = r.e;
+  }
+  html += esc(l.text.slice(pos));
+  return `<div class="ln" id="ln-${l.id}"><span class="no">${l.n}</span><span class="gut">${cats.map(c => `<i class="cat-${c}"></i>`).join('')}</span><span class="tx">${html || ' '}</span></div>`;
+}
+
+function aiBarHtml(doc) {
+  if (!doc.ai) return '';
+  const a = doc.ai;
+  if (a.status === 'running') return `<div class="aibar" role="status"><div class="row"><span class="spin"></span><span id="aiprog">Claude is reading ${doc.lines.length} lines…</span><span style="flex:1"></span><button class="btn" id="stopBtn" type="button">Stop</button></div></div>`;
+  if (a.status === 'error') return `<div class="aibar" role="status">${esc(a.message)}</div>`;
+  return `<div class="aibar" role="status"><div><b>Deep scan:</b> Claude proposed ${a.proposed}. <span class="ok">${a.added} new verified</span>, ${a.confirmed} confirmed rule findings, <span class="bad">${a.rejected.length} rejected</span>.</div>
+    ${a.rejected.length ? `<details><summary>Why ${a.rejected.length === 1 ? 'one finding was' : a.rejected.length + ' findings were'} rejected</summary>${a.rejected.map(r => `<div class="rej"><b>${esc(r.f.title || 'Untitled')}</b><br>${esc(r.reason)}${r.f.quote ? `<br><q>${esc(r.f.quote)}</q>` : ''}</div>`).join('')}</details>` : '<details><summary>How verification works</summary><div class="rej" style="border-color:var(--c-financial);background:none">Each AI finding must quote the document verbatim and cite its line. The quote is matched against the text; if it isn’t there, the finding is dropped.</div></details>'}
+  </div>`;
+}
+
+function findingsHtml(doc) {
+  const list = sortedFindings(doc).filter(f => state.filter === 'all' || f.cat === state.filter);
+  if (!list.length) return `<div class="empty">${state.filter === 'all' ? 'No findings in this document.' : 'Nothing in this category.'}</div>`;
+  return `<div class="plist">${list.map(f => {
+    const sev = f.severity !== 'info' ? `<span class="sev ${f.severity}">${f.severity === 'high' ? 'High' : f.severity === 'medium' ? 'Medium' : 'Low'}</span>` : '';
+    const src = f.source === 'ai' ? `<span class="src">${ICON_OK}Found by Claude, ${f.verified === 'absence' ? 'absence checked' : f.verified === 'relocated' ? 'citation corrected' : f.verified === 'fuzzy' ? 'near-exact quote' : 'quote verified'}</span>` : `<span class="src">${ICON_OK}Rule check${f.confirmed ? ', confirmed by Claude' : ''}</span>`;
+    let val = '';
+    if (f.cat === 'deadline' && f.date) { const [r, soon] = relDays(f.date); val = `<div class="f-val"><span class="big">${esc(DT.fmtDate(f.date))}</span><span class="rel${soon ? ' soon' : ''}">${r}</span></div>`; }
+    else if (f.value && f.cat !== 'obligation') val = `<div class="f-val">${esc(f.value)}</div>`;
+    const cite = f.refs.length
+      ? `<div class="cite"><span class="loc">${esc(locOf(doc, f.refs[0]))}${f.refs.length > 1 ? ` +${f.refs.length - 1}` : ''}</span>${f.quote ? `<q>${esc(f.quote)}</q>` : ''}</div>`
+      : `<div class="cite"><span class="loc">Not in document</span><span>Checked against the ${esc(f.schema || 'document')}</span></div>`;
+    return `<article class="f cat-${f.cat}${f.id === state.sel ? ' sel' : ''}" data-id="${f.id}" tabindex="0" role="button" aria-pressed="${f.id === state.sel}">
+      <div class="f-top"><span class="cat">${DT.CAT_NAME[f.cat]}</span>${sev}${src}</div>
+      <div class="f-title">${esc(f.title)}</div>${val}
+      ${f.detail ? `<div class="f-detail">${esc(f.detail)}</div>` : ''}${cite}</article>`;
+  }).join('')}</div>`;
+}
+
+function checklistHtml(doc) {
+  return `<div class="plist"><div class="f-detail" style="margin:0 2px 4px">Fields a ${esc(DT.TYPE_NAME[doc.type])} checklist expects. Click a location to see it in the document.</div>${doc.checklist.map(c => `<div class="check"><span class="ic ${c.ok ? 'y' : 'n'}">${c.ok ? '✓' : '✕'}</span><span>${esc(c.name)}</span>${c.line ? `<button type="button" data-line="${c.line}">${esc(locOf(doc, c.line))}</button>` : `<span style="margin-left:auto;color:var(--faint);font-size:13px">${c.ok ? '' : 'Not found'}</span>`}</div>`).join('')}</div>`;
+}
+
+function report(doc) {
+  return {
+    document: { file: doc.name, type: DT.TYPE_NAME[doc.type], pages: doc.lines[doc.lines.length - 1].page, lines: doc.lines.length, number: doc.meta.number ? doc.meta.number.value : null },
+    generated: new Date().toISOString(),
+    findings: sortedFindings(doc).map(f => {
+      const o = { category: f.cat, title: f.title, value: f.value || null, severity: f.severity };
+      if (f.date) o.date = f.date;
+      o.found_by = f.source === 'ai' ? 'claude' : 'rules';
+      o.verification = f.source === 'ai' ? f.verified : 'deterministic';
+      o.source = f.refs.length ? { file: doc.name, page: doc.lines.find(l => l.id === f.refs[0]).page, line: doc.lines.find(l => l.id === f.refs[0]).n, quote: f.quote || doc.lines.find(l => l.id === f.refs[0]).text.trim() } : { absent: true, checked_against: f.schema || null };
+      return o;
+    }),
+  };
+}
+function jsonHtml(obj) {
+  return esc(JSON.stringify(obj, null, 2))
+    .replace(/(&quot;[^&]*?&quot;)(\s*:)/g, '<span class="k">$1</span>$2')
+    .replace(/(:\s*)(&quot;.*?&quot;)(,?)$/gm, '$1<span class="s">$2</span>$3')
+    .replace(/(:\s*)(-?\d+(?:\.\d+)?|true|false|null)(,?)$/gm, '$1<span class="n">$2</span>$3');
+}
+
+// ---------- interactions ----------
+function select(id, fromDoc) {
+  state.sel = state.sel === id && !fromDoc ? null : id;
+  const doc = cur();
+  const f = doc.findings.find(x => x.id === id);
+  if (f && state.filter !== 'all' && f.cat !== state.filter) state.filter = 'all';
+  if (fromDoc) state.tab = 'findings';
+  const vs = $('#viewer') ? $('#viewer').scrollTop : 0, ps = $('#panel') ? $('#panel').scrollTop : 0, ws = window.scrollY;
+  render();
+  $('#viewer').scrollTop = vs; $('#panel').scrollTop = ps; window.scrollTo(0, ws);
+  if (!state.sel || !f) return;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (fromDoc) { const card = document.querySelector(`.f[data-id="${id}"]`); if (card) card.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' }); return; }
+  const marks = document.querySelectorAll(`mark[data-f="${id}"]`);
+  if (marks.length) {
+    marks[0].closest('.ln').scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+    marks.forEach(m => { m.classList.remove('flash'); void m.offsetWidth; m.classList.add('flash'); });
+  }
+}
+function flashLine(id) {
+  const el = $('#ln-' + id); if (!el) return;
+  el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+}
+function bindWelcome() {
+  const drop = $('#drop');
+  drop.onclick = () => $('#file').click();
+  drop.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#file').click(); } };
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => handleFiles([...e.dataTransfer.files]));
+  document.querySelectorAll('[data-sample]').forEach(b => b.onclick = () => { const s = DT.SAMPLES[+b.dataset.sample]; addDoc(s.name, s.text, 'sample'); });
+}
+function bindWorkspace(doc) {
+  document.querySelectorAll('[data-filter]').forEach(b => b.onclick = () => { state.filter = b.dataset.filter; render(); });
+  document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { state.tab = b.dataset.tab; render(); });
+  document.querySelectorAll('.f[data-id]').forEach(c => { c.onclick = () => select(c.dataset.id); c.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(c.dataset.id); } }; });
+  document.querySelectorAll('mark[data-f]').forEach(m => m.onclick = () => select(m.dataset.f, true));
+  document.querySelectorAll('[data-line]').forEach(b => b.onclick = () => flashLine(+b.dataset.line));
+  const sb = $('#scanBtn'); if (sb) sb.onclick = deepScan;
+  const st = $('#stopBtn'); if (st) st.onclick = () => ctl && ctl.abort();
+  const ex = $('#exportBtn'); if (ex) ex.onclick = async () => {
+    try { await downloads.save({ filename: 'doctrace-' + doc.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 50) + '.json', data: JSON.stringify(report(doc), null, 2) }); toast('Report exported.'); }
+    catch (e) { if (e.code !== 'declined') toast('Export is not available here. Copy it from the Traceable JSON tab.'); }
+  };
+}
+document.addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) { state.active = t.dataset.doc; state.sel = null; state.filter = 'all'; render(); } });
+$('#addBtn').onclick = () => $('#file').click();
+$('#file').onchange = (e) => { handleFiles([...e.target.files]); e.target.value = ''; };
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer.files.length && cur()) handleFiles([...e.dataTransfer.files]); });
+
+let toastT;
+function toast(msg) { let t = $('.toast'); if (!t) { t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); } t.textContent = msg; clearTimeout(toastT); toastT = setTimeout(() => t.remove(), 5000); }
+function busy(msg) { let o = $('.overlay'); if (!msg) { if (o) o.remove(); return; } if (!o) { o = document.createElement('div'); o.className = 'overlay'; document.body.appendChild(o); } o.innerHTML = `<div class="box" role="status"><span class="spin"></span>${esc(msg)}</div>`; }
+
+render();
+})();
+</script>
+</body>
+</html>
