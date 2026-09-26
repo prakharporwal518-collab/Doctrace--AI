@@ -1,0 +1,33 @@
+{
+  "name": "doctrace-ai",
+  "private": true,
+  "version": "0.1.0",
+  "description": "DocTrace AI - explainable, source-traceable business document analysis. No source, no output.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "mammoth": "^1.12.3",
+    "pdfjs-dist": "^6.3.289",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.12.0",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  },
+  "engines": {
+    "node": ">=20.19"
+  }
+}
