@@ -372,12 +372,17 @@ export function extractFacts(parsed: ParsedDocument): Facts {
   if (addr) f.deliveryAddress = { value: addr.m[1].trim(), line: addr.line, quote: addr.m[1].trim() };
 
   // ---- money -------------------------------------------------------
-  for (const line of lines) {
+  for (const [i, line] of lines.entries()) {
     const text = line.text;
     if (RE.words.test(text) && !/\d{2,}/.test(text)) {
-      const phrase = extractWordsPhrase(text);
+      // The words can wrap: "… Three Hundred Seventy" / "Six Only". Read both lines,
+      // but quote only the part on the cited line (that is what the Evidence Lock checks).
+      const next = lines[i + 1];
+      const wraps = !/\b(?:only|paise|paisa)\b/i.test(text) && next && next.page === line.page && /^[a-z][a-z\s-]*\b(?:only|paise|paisa)\b/i.test(next.text.trim());
+      const phrase = extractWordsPhrase(wraps ? `${text} ${next.text.trim()}` : text);
       const value = parseAmountInWords(phrase);
-      if (value != null && phrase) f.amountInWords = { value, line, quote: phrase };
+      const quote = wraps ? text.replace(/^.*?in\s+words\s*:?\s*/i, '').trim() : phrase;
+      if (value != null && phrase && quote) f.amountInWords = { value, line, quote };
       continue;
     }
     if (RE.subtotal.test(text)) {
@@ -412,9 +417,12 @@ export function extractFacts(parsed: ParsedDocument): Facts {
   f.lateFee = findLateFee(lines);
   for (const line of lines) {
     const t = line.text;
-    if (!f.paymentTerms && /\b(?:pay|paid|payable|payment)\b/i.test(t) && /\bwithin\b|\bnet\b|\bfrom\b/i.test(t)) {
-      const d = findDurations(t)[0];
+    if (!f.paymentTerms && /\b(?:pay|paid|payable|payment)\b/i.test(t)) {
+      const d = /\bwithin\b|\bnet\b|\bfrom\b/i.test(t) ? findDurations(t)[0] : undefined;
+      // "by the 7th of each month" is a payment term too (recurring rent, fees).
+      const dom = /\bby\s+the\s+\d{1,2}(?:st|nd|rd|th)\s+(?:day\s+)?of\s+(?:each|every)\s+month\b/i.exec(t);
       if (d) f.paymentTerms = { value: d, line, quote: d.text };
+      else if (dom) f.paymentTerms = { value: { amount: 1, unit: 'month', text: dom[0], index: dom.index }, line, quote: dom[0] };
     }
     if (!f.noticeClause && /\bnotice\b/i.test(t) && /\b(?:prior|before|preceding|in\s+advance)\b/i.test(t)) {
       const d = findDurations(t)[0];

@@ -79,9 +79,12 @@ export function formatINR(value: number | null | undefined, currency = 'INR'): s
   }
 }
 
-/** Equal within one rupee or 0.1 %, whichever is larger. */
+/**
+ * Equal within ₹1 (rounding / round-off). A percentage tolerance would hide
+ * real errors on large invoices (0.1% of ₹4,72,000 is ₹472).
+ */
 export function moneyEqual(a: number, b: number): boolean {
-  return Math.abs(a - b) <= Math.max(1, Math.abs(b) * 0.001);
+  return Math.abs(a - b) <= 1.000001;
 }
 
 export function round2(n: number): number {

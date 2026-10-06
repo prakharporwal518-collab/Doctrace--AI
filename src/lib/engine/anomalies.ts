@@ -181,7 +181,8 @@ export function detectAnomalies(f: Facts, parsed: ParsedDocument, ctx: AnomalyCo
   if (f.docType === 'contract') {
     if (f.autoRenewal) push('CLAUSE_AUTO_RENEWAL', 'medium', 'Auto-renewal clause', 'renewal only by explicit agreement', f.autoRenewal.value, f.autoRenewal, [], f.noticeClause ? `Notice must be given ${f.noticeClause.value.amount} ${f.noticeClause.value.unit}s before renewal.` : '');
     for (const line of f.lines) {
-      const m = /\bunlimited\s+liability\b|\bliability\s+(?:shall\s+)?(?:not\s+be\s+|be\s+un)limited\b/i.exec(line.text);
+      // "unlimited liability", "liability shall not be limited", "liability for damage … shall not be limited"
+      const m = /\bunlimited\s+liability\b|\bliability\b[^.;]{0,80}?\b(?:shall|will)\s+(?:not\s+be\s+|be\s+un)limited\b/i.exec(line.text);
       if (m) {
         push('CLAUSE_UNLIMITED_LIABILITY', 'high', 'Unlimited liability clause', 'a liability cap', m[0], { line, quote: m[0] });
         break;
