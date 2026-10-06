@@ -182,6 +182,29 @@ describe('anomaly engine', () => {
   });
 });
 
+describe('money tolerance and wrapped amounts in words', () => {
+  it('allows ₹1 of rounding but catches a ₹6 or ₹400 difference', () => {
+    const inv = (total: string, words: string[]) => doc(['TAX INVOICE', 'Invoice No: INV-7', '1    Paper    1    27,376.00    27,376.00', 'Subtotal    27,376.00', `Total    ${total}`, ...words]);
+    const rules = (d: ParsedDocument) => detectAnomalies(extractFacts(d), d).map((a) => a.rule_code);
+    expect(rules(inv('27,376.50', ['Amount in words: Rupees Twenty Seven Thousand Three Hundred Seventy Six Only']))).toEqual([]);
+    expect(rules(inv('27,776.00', []))).toContain('ARITH_TOTAL');
+    const wrapped = inv('27,376.00', ['Amount in words: Rupees Twenty Seven Thousand Three Hundred Seventy', 'Six Only']);
+    expect(extractFacts(wrapped).amountInWords?.value).toBe(27376);
+    expect(rules(wrapped)).toEqual([]);
+    expect(rules(inv('27,376.00', ['Amount in words: Rupees Twenty Seven Thousand Three Hundred Seventy Only']))).toContain('WORDS_MISMATCH');
+  });
+});
+
+describe('contract clauses', () => {
+  it('finds unlimited liability with words in between, and rent due dates as payment terms', () => {
+    const d = doc(['OFFICE LEASE AGREEMENT', 'between Mehta Realty LLP ("Lessor") and Nexa Technologies ("Lessee").', "3.2 The Lessee's liability for damage to the premises shall not be limited.", '2.1 The Lessee shall pay a monthly rent of ₹85,000 by the 7th of each month.']);
+    const f = extractFacts(d);
+    expect(detectAnomalies(f, d).map((a) => a.rule_code)).toContain('CLAUSE_UNLIMITED_LIABILITY');
+    expect(f.paymentTerms?.quote).toBe('by the 7th of each month');
+    expect(checkMissing(f).checklist.find((c) => c.key === 'payment_terms')!.present).toBe(true);
+  });
+});
+
 describe('missing data, trust and penalties', () => {
   it('scores completeness by severity', () => {
     const d = doc(['TAX INVOICE', 'Invoice No: INV-1    Invoice Date: 01 Sep 2026', 'Total    ₹100.00']);
