@@ -2,23 +2,23 @@ import js from '@eslint/js';
 import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
+import tseslint from 'typescript-eslint';
 
-export default [
-  { ignores: ['dist', 'node_modules'] },
+export default tseslint.config(
+  { ignores: ['dist', 'node_modules', 'public/tesseract', '.netlify', 'doctrace-ai-prototype*.html'] },
   {
-    files: ['**/*.{js,jsx}'],
+    files: ['**/*.{ts,tsx,js,mjs}'],
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: 'latest',
-      sourceType: 'module',
       globals: { ...globals.browser, ...globals.node },
-      parserOptions: { ecmaFeatures: { jsx: true } },
     },
     plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
     rules: {
-      ...js.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^_' }],
-      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      // Context modules export a provider and a hook together; HMR falls back to a reload there.
+      'react-refresh/only-export-components': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
-];
+);
