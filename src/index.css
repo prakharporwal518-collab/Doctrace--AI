@@ -1,0 +1,169 @@
+@import 'tailwindcss';
+
+/* Fonts are self-hosted (no Google Fonts request). */
+@import '@fontsource/instrument-sans/400.css';
+@import '@fontsource/instrument-sans/500.css';
+@import '@fontsource/instrument-sans/600.css';
+@import '@fontsource/instrument-sans/700.css';
+@import '@fontsource/source-serif-4/400.css';
+@import '@fontsource/source-serif-4/600.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
+@theme {
+  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Devanagari', sans-serif;
+  --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-navy: #0f1629;
+  --color-navy-2: #131b31;
+  --color-card: #1e2640;
+  --color-card-2: #252e4d;
+  --color-line: #2c3654;
+  --color-line-2: #3a4566;
+  --color-ink: #e9edf6;
+  --color-muted: #a1aac0;
+  --color-faint: #6f7a96;
+  --color-yellow: #ffd43b;
+  --color-purple: #6c63ff;
+
+  /* Highlight colours by finding type */
+  --color-deadline: #8f88ff;
+  --color-amount: #3ecf8e;
+  --color-anomaly: #ff5d6c;
+  --color-obligation: #4ea8ff;
+  --color-missing: #ff9f43;
+  --color-neutral: #a9b4cc;
+
+  --radius-card: 10px;
+
+  --animate-pulse-box: pulse-box 1.2s ease-out 2;
+  --animate-fade-in: fade-in 0.25s ease-out both;
+  --animate-rise: rise 0.35s ease-out both;
+}
+
+@keyframes pulse-box {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--hl, #ffd43b) 70%, transparent); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-navy);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-yellow) 40%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-yellow);
+    outline-offset: 2px;
+  }
+  /* Quiet scrollbars on dark panels */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-2) transparent;
+  }
+  input, select, textarea, button {
+    font: inherit;
+  }
+}
+
+@layer components {
+  .card {
+    background: var(--color-card);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+  }
+  .cite {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-faint);
+  }
+  .input {
+    width: 100%;
+    background: var(--color-navy-2);
+    border: 1px solid var(--color-line-2);
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+    color: var(--color-ink);
+    transition: border-color 0.15s;
+  }
+  .input:focus {
+    border-color: var(--color-yellow);
+    outline: none;
+  }
+  .input::placeholder {
+    color: var(--color-faint);
+  }
+  /* The highlighter mark behind the logo and key phrases */
+  .mark {
+    position: relative;
+    z-index: 0;
+    white-space: nowrap;
+  }
+  .mark::before {
+    content: '';
+    position: absolute;
+    left: -0.08em;
+    right: -0.08em;
+    bottom: -0.04em;
+    height: 0.2em;
+    background: var(--color-yellow);
+    opacity: 0.95;
+    border-radius: 2px;
+    transform: skewX(-10deg);
+    z-index: -1;
+  }
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-card-2);
+    border-radius: 6px;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.05), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

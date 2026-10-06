@@ -1,16 +1,30 @@
-# Netlify build settings for DocTrace AI (Vite + React static site).
+# Netlify configuration for DocTrace AI (Vite SPA + Netlify Functions).
 [build]
   command = "npm run build"
   publish = "dist"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "22"
 
-# Hashed build assets never change, so browsers can cache them for a year.
+[functions]
+  node_bundler = "esbuild"
+
+# Single-page app: let React Router handle every path that is not a file.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
 [[headers]]
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/tesseract/*"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
 
 [[headers]]
   for = "/*"
@@ -18,3 +32,4 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     X-Frame-Options = "DENY"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
