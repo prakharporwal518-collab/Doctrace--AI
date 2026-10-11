@@ -42,6 +42,9 @@ export default function Login() {
       if (bad) return setError(bad);
       if (!form.full_name.trim()) return setError('Enter your name.');
     } else if (!form.password) return setError('Enter your password.');
+    // The demo credentials are printed on this page; typing them should work
+    // even before the demo account exists (the demo flow creates and seeds it).
+    if (mode === 'signin' && form.email.trim().toLowerCase() === DEMO_EMAIL && form.password === DEMO_PASSWORD) return demo();
     setBusy(mode);
     try {
       if (mode === 'signin') {
