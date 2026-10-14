@@ -172,4 +172,4 @@ The OCR engine and its English + Hindi language data (~16 MB) are copied from `n
 
 ## Team Binary Beasts
 
-Prakhar Porwal · Piyush Kumar · Prince Kumar · Tanay Marudkar
+Prakhar Porwal · Tanay Marudkar
