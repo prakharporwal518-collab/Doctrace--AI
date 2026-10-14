@@ -326,7 +326,7 @@ export default function Landing() {
           <p>
             Built by <span className="text-ink">Team Binary Beasts</span> · Zero Origin Hackathon 2026
           </p>
-          <p>Prakhar Porwal · Piyush Kumar · Prince Kumar · Tanay Marudkar</p>
+          <p>Prakhar Porwal · Tanay Marudkar</p>
         </div>
       </footer>
     </div>
